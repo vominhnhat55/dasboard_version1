@@ -87,7 +87,7 @@ def render(filters: dict, daily_df):
         col_tbl, col_btn = st.columns([4, 1])
         with col_tbl:
             st.dataframe(fc_show[["Ngày", "Dự báo DS (VND)", "So TB thực tế"]],
-                         use_container_width=True, hide_index=True)
+                         width="stretch", hide_index=True)
         with col_btn:
             st.markdown("<br><br>", unsafe_allow_html=True)
             download_button(fc_show[["Ngày", "Dự báo DS (VND)", "So TB thực tế"]],

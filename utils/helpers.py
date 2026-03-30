@@ -125,11 +125,11 @@ def chart_with_data(
             data=to_csv_bytes(export_df),
             file_name=f"{filename}.csv",
             mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             help=f"Tải xuống {filename}.csv",
         )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def download_button(df: pd.DataFrame, filename: str, label: str = "⬇️ Tải CSV"):

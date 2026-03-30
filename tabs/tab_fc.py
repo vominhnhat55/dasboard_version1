@@ -54,7 +54,6 @@ def _compute_fc_status(outlet_df: pd.DataFrame, fc_df: pd.DataFrame,
     act = outlet_df[["supermarket_code", "supermarket_name", "area", "zone",
                      "revenue", "active_days", "rev_per_day"]].copy()
     act = act.rename(columns={"supermarket_code": "store_code"})
-
     # Merge
     df = act.merge(fc_agg, on="store_code", how="left")
     df["fc_total"] = df["fc_total"].fillna(0)
@@ -69,14 +68,14 @@ def _compute_fc_status(outlet_df: pd.DataFrame, fc_df: pd.DataFrame,
                                 df["revenue"] / df["fc_total"] * 100, np.nan)
     df["expected_pct"] = elapsed_days / total_days * 100
     df["gap_pct"] = df["actual_pct"] - df["expected_pct"]
-
+    actual_pace = df["revenue"] / max(1, elapsed_days)
     # Chỉ số 2: tốc độ
     df["needed_pace"] = np.where(
         (df["fc_total"] > df["revenue"]) & (remain_days > 0),
         (df["fc_total"] - df["revenue"]) / remain_days, 0)
     df["pace_ratio"] = np.where(
         df["needed_pace"] > 0,
-        df["rev_per_day"] / df["needed_pace"] * 100, 100)
+        actual_pace / df["needed_pace"] * 100, 100)
 
     # Trạng thái
     def status(row):
@@ -98,7 +97,6 @@ def _compute_fc_status(outlet_df: pd.DataFrame, fc_df: pd.DataFrame,
         "danger":    "🔴 Nguy cơ không đạt",
         "no_fc":     "⚪ Không có FC",
     })
-
     return df.sort_values("gap_pct")
 
 
@@ -108,7 +106,6 @@ def render(filters: dict):
     a, z = filters["area"], filters["zone"]
     c = filters["category"]
     top_n = filters["top_n"]
-
     outlet = get_outlet_summary(s, e, a, z, c)
     fc_df = get_forecast(s, e, a, z)
 
@@ -182,7 +179,7 @@ def render(filters: dict):
             margin=dict(l=20, r=20, t=40, b=20),
             font=dict(color="#8b8fa8"),
         )
-        st.plotly_chart(fig_gauge, use_container_width=True)
+        st.plotly_chart(fig_gauge, width="stretch")
 
     with col2:
         # Donut trạng thái SM
@@ -205,7 +202,7 @@ def render(filters: dict):
             textfont_color="#fff",
         ))
         update_fig(fig_donut, 260, "Phân bổ trạng thái điểm bán vs FC")
-        st.plotly_chart(fig_donut, use_container_width=True)
+        st.plotly_chart(fig_donut, width="stretch")
 
     # ── Waterfall: FC vs Actual top stores ───────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
@@ -233,7 +230,7 @@ def render(filters: dict):
         title=f"Top {top_n} SM — FC vs Thực tế (theo FC lớn nhất)", height=360,
         display_cols={"supermarket_name": "Tên SM", "area": "KV", "zone": "Zone",
                       "fc_total": "FC (VND)", "revenue": "Thực tế (VND)",
-                      "actual_pct": "% Đạt", "gap_pct": "Gap vs tiến độ (%)"},
+                      "actual_pct": "% Đạt", "gap_pct": "   "},
         format_cols={"fc_total": "vnd", "revenue": "vnd",
                      "actual_pct": "float", "gap_pct": "float"},
     )
@@ -331,11 +328,9 @@ def render(filters: dict):
         format_cols={"fc_total": "vnd", "revenue": "vnd",
                      "actual_pct": "float", "gap_pct": "float", "pace_ratio": "float"},
     )
-
     # ── Bảng đầy đủ ───────────────────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
     section_header("📋 Bảng chi tiết tất cả điểm bán vs FC")
-
     tbl = df[["supermarket_name", "area", "zone", "fc_total", "revenue",
               "actual_pct", "expected_pct", "gap_pct", "pace_ratio", "status_label"]].copy()
     tbl.columns = ["Tên SM", "KV", "Zone", "FC (VND)", "Thực tế (VND)",
@@ -347,7 +342,7 @@ def render(filters: dict):
 
     col_tbl, col_btn = st.columns([5, 1])
     with col_tbl:
-        st.dataframe(tbl, use_container_width=True, hide_index=True)
+        st.dataframe(tbl, width="stretch", hide_index=True)
     with col_btn:
         st.markdown("<br><br>", unsafe_allow_html=True)
         download_button(tbl, "fc_vs_actual_all", "⬇️ Tải CSV")

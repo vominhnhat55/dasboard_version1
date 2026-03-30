@@ -52,7 +52,7 @@ def render_sidebar() -> dict:
         top_n = st.slider("Top N điểm bán / SP", 5, 30, DEFAULT_TOP_N)
 
         st.markdown("---")
-        if st.button("🔄 Refresh data", use_container_width=True):
+        if st.button("🔄 Refresh data", width="stretch"):
             st.cache_data.clear()
             st.rerun()
 
@@ -90,7 +90,7 @@ def _render_user_info(user):
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("🚪 Đăng xuất", use_container_width=True):
+    if st.button("🚪 Đăng xuất", width="stretch"):
         logout()
 
 

@@ -134,7 +134,7 @@ def _render_login_page():
             password = st.text_input(
                 "🔒 Mật khẩu", type="password", placeholder="••••••••")
             submitted = st.form_submit_button(
-                "Đăng nhập →", use_container_width=True)
+                "Đăng nhập →", width="stretch")
 
         if submitted:
             with st.spinner("Đang xác thực..."):
