@@ -271,7 +271,7 @@ def render(filters: dict):
         update_fig(fig_heat,
                    max(300, len(heat_pivot) * 28),
                    f"Heatmap DS sản phẩm × ngày (Top {filters['top_n']} SP)")
-        st.plotly_chart(fig_heat, use_container_width=True)
+        st.plotly_chart(fig_heat, width="stretch")
 
         # ── Line chart: trend từng SP ──────────────────────────────────────
         fig_line = px.line(
@@ -311,7 +311,7 @@ def render(filters: dict):
 
         col_tbl, col_btn = st.columns([5, 1])
         with col_tbl:
-            st.dataframe(prod_tbl, use_container_width=True, hide_index=True)
+            st.dataframe(prod_tbl, width="stretch", hide_index=True)
         with col_btn:
             st.markdown("<br><br>", unsafe_allow_html=True)
             download_button(

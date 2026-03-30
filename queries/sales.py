@@ -126,7 +126,7 @@ def get_outlet_summary(start, end, area, zone, category) -> pd.DataFrame:
             COUNT(DISTINCT report_date)                  AS active_days,
             COUNT(DISTINCT sku_code)                     AS sku_count,
             SAFE_DIVIDE(SUM(item_total),
-                COUNT(DISTINCT report_date))             AS rev_per_day
+            COUNT(DISTINCT report_date))             AS rev_per_day
         FROM `{BQ_PROJECT}.{BQ_TABLE}`
         WHERE type = 'X' {f}
         GROUP BY 1, 2, 3, 4

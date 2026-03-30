@@ -142,4 +142,4 @@ def render(filters: dict):
         "category": "Danh mục", "revenue": "Doanh số", "qty": "SL", "outlets": "# SM"
     })
     sku_tbl["Doanh số"] = sku_tbl["Doanh số"].apply(lambda x: f"{x:,.0f}")
-    st.dataframe(sku_tbl, use_container_width=True, hide_index=True)
+    st.dataframe(sku_tbl, width="stretch", hide_index=True)
