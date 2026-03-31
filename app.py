@@ -6,7 +6,7 @@ from auth.auth import require_login, get_current_user
 from components.sidebar import render_sidebar
 from queries.sales import get_daily
 from tabs import (tab_overview, tab_outlet, tab_product,
-                  tab_category, tab_forecast, tab_fc, tab_drilldown)
+                  tab_forecast)
 st.set_page_config(
     page_title="Sales dashboard",
     page_icon="📊",
@@ -20,7 +20,7 @@ filters = render_sidebar()
 with st.spinner("⚡ Đang lấy dữ liệu..."):
     daily_df = get_daily(
         filters["start"], filters["end"],
-        filters["area"], filters["zone"], filters["category"],
+        filters["area"], filters["zone"], filters["store_code"],
     )
 
 if daily_df.empty:
@@ -38,13 +38,10 @@ st.markdown(
 )
 st.markdown("<br>", unsafe_allow_html=True)
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🏠 Tổng quan",
-    "🎯 FC Doanh số",       # ← MỚI
-    "🔍 Tìm kiếm",         # ← MỚI
     "🏪 Điểm bán",
     "📦 Sản phẩm",
-    "🏷️ Danh mục",
     "🎁 CTKM",
     "🔮 Dự báo"
 ])
@@ -52,16 +49,10 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
 with tab1:
     tab_overview.render(filters, daily_df)
 with tab2:
-    tab_fc.render(filters)
-with tab3:
-    tab_drilldown.render(filters)
-with tab4:
     tab_outlet.render(filters)
-with tab5:
+with tab3:
     tab_product.render(filters)
-with tab6:
-    tab_category.render(filters)
-with tab7:
+with tab4:
     "check"
-with tab8:
+with tab5:
     tab_forecast.render(filters, daily_df)

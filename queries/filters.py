@@ -6,9 +6,9 @@
 def build_where(
     start: str,
     end: str,
-    area: str     = "Tất cả",
-    zone: str     = "Tất cả",
-    category: str = "Tất cả",
+    area: str       = "Tất cả",
+    zone: str       = "Tất cả",
+    store_code: str = "Tất cả",
 ) -> str:
     """
     Trả về chuỗi SQL WHERE bổ sung (không bao gồm type='X').
@@ -18,7 +18,7 @@ def build_where(
         AND area = 'KV1'
     """
     clause = f"AND report_date BETWEEN '{start}' AND '{end}'"
-    if area     != "Tất cả": clause += f" AND area     = '{area}'"
-    if zone     != "Tất cả": clause += f" AND zone     = '{zone}'"
-    if category != "Tất cả": clause += f" AND category = '{category}'"
+    if area       != "Tất cả": clause += f" AND area             = '{area}'"
+    if zone       != "Tất cả": clause += f" AND zone             = '{zone}'"
+    if store_code != "Tất cả": clause += f" AND supermarket_code = '{store_code}'"
     return clause

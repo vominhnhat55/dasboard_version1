@@ -17,17 +17,12 @@ def render(filters: dict):
     """Render Tab Drill-down."""
     s, e = filters["start"], filters["end"]
     a, z = filters["area"], filters["zone"]
-    c = filters["category"]
-
-    section_header("🔍 Drill-down — Doanh số chi tiết")
-
+    sc = filters["store_code"]
     # ── Sub-tabs ──────────────────────────────────────────────────────────────
     sub1, sub2 = st.tabs(["🏪 Theo Siêu thị", "📦 Theo Sản phẩm"])
 
     # ══════════ SUB-TAB 1: SIÊU THỊ ══════════════════════════════════════════
     with sub1:
-        section_header("🏪 Doanh số từng ngày — từng siêu thị")
-
         # Filter siêu thị
         stores_df = get_store_list(a, z)
         store_options = ["Tất cả (tổng hợp)"] + [
@@ -50,7 +45,7 @@ def render(filters: dict):
 
         # Load data
         with st.spinner("Đang query..."):
-            daily = get_outlet_daily(s, e, a, z, c, sel_store_code)
+            daily = get_outlet_daily(s, e, a, z, sc, sel_store_code)
             fc_df = get_forecast(s, e, a, z)
 
         if daily.empty:
@@ -222,7 +217,7 @@ def render(filters: dict):
         with col_cat:
             # Category options từ data
             cats = ["Tất cả"] + sorted(
-                get_product_daily(s, e, a, z, c)["category"].unique().tolist()
+                get_product_daily(s, e, a, z, sc)["category"].unique().tolist()
             ) if True else ["Tất cả"]
             sel_cat2 = st.selectbox(
                 "🏷️ Lọc danh mục", ["Tất cả"], key="dd_cat2")
@@ -231,7 +226,7 @@ def render(filters: dict):
                        else sel_store2.split(" — ")[0])
 
         with st.spinner("Đang query..."):
-            prod_daily = get_product_daily(s, e, a, z, c, store_code2)
+            prod_daily = get_product_daily(s, e, a, z, sc, store_code2)
 
         if prod_daily.empty:
             st.warning("Không có dữ liệu sản phẩm.")

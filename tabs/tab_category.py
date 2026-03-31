@@ -11,9 +11,9 @@ from queries.sales import get_category_weekly
 
 def render(filters: dict):
     s, e = filters["start"], filters["end"]
-    a, z, c = filters["area"], filters["zone"], filters["category"]
+    a, z, sc = filters["area"], filters["zone"], filters["store_code"]
 
-    cat_raw = get_category_weekly(s, e, a, z, c)
+    cat_raw = get_category_weekly(s, e, a, z, sc)
     cat = (cat_raw.groupby("category")
            .agg(revenue=("revenue", "sum"), qty=("qty", "sum"),
                 outlets=("outlets", "max"), products=("products", "max"), skus=("skus", "max"))

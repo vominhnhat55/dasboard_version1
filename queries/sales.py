@@ -46,12 +46,12 @@ def get_filter_options() -> pd.DataFrame:
 # ── Tab Tổng quan ─────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_daily(start, end, area, zone, category) -> pd.DataFrame:
+def get_daily(start, end, area, zone, store_code) -> pd.DataFrame:
     """
     Doanh số theo ngày — dùng cho biểu đồ trend và forecast.
     Columns: report_date, dow (0=Mon), revenue, qty
     """
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             report_date,
@@ -71,9 +71,9 @@ def get_daily(start, end, area, zone, category) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_weekly(start, end, area, zone, category) -> pd.DataFrame:
+def get_weekly(start, end, area, zone, store_code) -> pd.DataFrame:
     """Doanh số theo tuần — dùng cho biểu đồ WoW%."""
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             EXTRACT(ISOWEEK FROM report_date) AS week,
@@ -87,9 +87,9 @@ def get_weekly(start, end, area, zone, category) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_area_zone(start, end, area, zone, category) -> pd.DataFrame:
+def get_area_zone(start, end, area, zone, store_code) -> pd.DataFrame:
     """Doanh số theo area và zone."""
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             area,
@@ -107,14 +107,14 @@ def get_area_zone(start, end, area, zone, category) -> pd.DataFrame:
 # ── Tab Điểm bán ──────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_outlet_summary(start, end, area, zone, category) -> pd.DataFrame:
+def get_outlet_summary(start, end, area, zone, store_code) -> pd.DataFrame:
     """
     Tổng hợp hiệu quả từng điểm bán.
 
     Columns: supermarket_code, supermarket_name, area, zone,
              revenue, qty, active_days, sku_count, rev_per_day
     """
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             supermarket_code,
@@ -136,14 +136,14 @@ def get_outlet_summary(start, end, area, zone, category) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_outlet_half_trend(start, end, area, zone, category) -> pd.DataFrame:
+def get_outlet_half_trend(start, end, area, zone, store_code) -> pd.DataFrame:
     """
     So sánh doanh số điểm bán nửa đầu vs nửa sau tháng.
     Dùng để phát hiện điểm bán sụt giảm liên tục.
 
     Columns: supermarket_code, supermarket_name, first, second, chg (%)
     """
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             supermarket_code,
@@ -173,14 +173,14 @@ def get_outlet_half_trend(start, end, area, zone, category) -> pd.DataFrame:
 # ── Tab Sản phẩm ──────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_product_summary(start, end, area, zone, category) -> pd.DataFrame:
+def get_product_summary(start, end, area, zone, store_code) -> pd.DataFrame:
     """
     Tổng hợp doanh số theo sản phẩm.
 
     Columns: product_code, product_name, category,
              revenue, qty, outlets, days, rev_per_day, rev_per_outlet
     """
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             product_code,
@@ -203,14 +203,14 @@ def get_product_summary(start, end, area, zone, category) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_sku_summary(start, end, area, zone, category) -> pd.DataFrame:
+def get_sku_summary(start, end, area, zone, store_code) -> pd.DataFrame:
     """
     Tổng hợp doanh số theo SKU.
 
     Columns: sku_code, sku_name, product_name, category,
              revenue, qty, outlets
     """
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             sku_code,
@@ -231,14 +231,14 @@ def get_sku_summary(start, end, area, zone, category) -> pd.DataFrame:
 # ── Tab Danh mục ──────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_category_weekly(start, end, area, zone, category) -> pd.DataFrame:
+def get_category_weekly(start, end, area, zone, store_code) -> pd.DataFrame:
     """
     Doanh số theo danh mục × tuần.
     Dùng cho biểu đồ trend và tính tăng trưởng.
 
     Columns: category, week, revenue, qty, outlets, products, skus
     """
-    f = build_where(start, end, area, zone, category)
+    f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
             category,
@@ -292,13 +292,13 @@ def get_forecast(start, end, area, zone) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_outlet_daily(start, end, area, zone, category, store_code="Tất cả") -> pd.DataFrame:
+def get_outlet_daily(start, end, area, zone, store_code="Tất cả", outlet_code="Tất cả") -> pd.DataFrame:
     """
     Doanh số TỪNG NGÀY của từng điểm bán — dùng cho drill-down.
     """
-    f = build_where(start, end, area, zone, category)
-    if store_code != "Tất cả":
-        f += f" AND supermarket_code = '{store_code}'"
+    f = build_where(start, end, area, zone, store_code)
+    if outlet_code != "Tất cả":
+        f += f" AND supermarket_code = '{outlet_code}'"
     sql = f"""
         SELECT
             supermarket_code,
@@ -317,13 +317,13 @@ def get_outlet_daily(start, end, area, zone, category, store_code="Tất cả") 
 
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_product_daily(start, end, area, zone, category, store_code="Tất cả") -> pd.DataFrame:
+def get_product_daily(start, end, area, zone, store_code="Tất cả", outlet_code="Tất cả") -> pd.DataFrame:
     """
     Doanh số TỪNG NGÀY của từng sản phẩm — dùng cho drill-down.
     """
-    f = build_where(start, end, area, zone, category)
-    if store_code != "Tất cả":
-        f += f" AND supermarket_code = '{store_code}'"
+    f = build_where(start, end, area, zone, store_code)
+    if outlet_code != "Tất cả":
+        f += f" AND supermarket_code = '{outlet_code}'"
     sql = f"""
         SELECT
             product_name,
