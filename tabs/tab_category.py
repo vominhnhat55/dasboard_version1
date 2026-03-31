@@ -12,7 +12,6 @@ from queries.sales import get_category_weekly
 def render(filters: dict):
     s, e = filters["start"], filters["end"]
     a, z, sc = filters["area"], filters["zone"], filters["store_code"]
-
     cat_raw = get_category_weekly(s, e, a, z, sc)
     cat = (cat_raw.groupby("category")
            .agg(revenue=("revenue", "sum"), qty=("qty", "sum"),
@@ -84,7 +83,6 @@ def render(filters: dict):
         cat_piv["growth"] = (cat_piv[w_last] - cat_piv[w_first]
                              ) / (cat_piv[w_first] + 1) * 100
         cat_piv = cat_piv.reset_index()
-
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("**📉 Danh mục tăng trưởng âm**")

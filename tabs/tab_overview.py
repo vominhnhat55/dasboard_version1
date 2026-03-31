@@ -194,10 +194,14 @@ def render(filters: dict, daily_df):
                              "tickfont": {"color": "#8b8fa8"}},
                     "bar": {"color": "#4c6ef5"},
                     "steps": [
-                        {"range": [0, DANGER_PCT],          "color": "#2d1b1b"},
-                        {"range": [DANGER_PCT, WARNING_PCT], "color": "#2d2414"},
-                        {"range": [WARNING_PCT, 100],        "color": "#0d2d1f"},
-                        {"range": [100, 120],               "color": "#0a3d2e"},
+                        {"range": [0, DANGER_PCT],
+                            "color": "#2d1b1b"},
+                        {"range": [DANGER_PCT, WARNING_PCT],
+                            "color": "#2d2414"},
+                        {"range": [WARNING_PCT, 100],
+                            "color": "#0d2d1f"},
+                        {"range": [100, 120],
+                            "color": "#0a3d2e"},
                     ],
                     "threshold": {"line": {"color": "#00c48c", "width": 3},
                                   "thickness": 0.85, "value": 100},
@@ -215,7 +219,8 @@ def render(filters: dict, daily_df):
             st.plotly_chart(fig_gauge, width="stretch")
 
         with dcol:
-            status_count = fc_status["status_label"].value_counts().reset_index()
+            status_count = fc_status["status_label"].value_counts(
+            ).reset_index()
             status_count.columns = ["Trạng thái", "Số SM"]
             status_colors = {
                 "✅ Đạt FC":            "#00c48c",
@@ -240,7 +245,8 @@ def render(filters: dict, daily_df):
         st.markdown("<br>", unsafe_allow_html=True)
         section_header("📊 So sánh FC vs Thực tế theo điểm bán")
         top_n = filters["top_n"]
-        top_stores = fc_status[fc_status["fc_total"] > 0].nlargest(top_n, "fc_total")
+        top_stores = fc_status[fc_status["fc_total"]
+                               > 0].nlargest(top_n, "fc_total")
         fig_bar = go.Figure()
         fig_bar.add_bar(
             name="FC", x=top_stores["supermarket_name"],
@@ -272,11 +278,14 @@ def render(filters: dict, daily_df):
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("**🔴 Nguy cơ không đạt FC (cần hành động ngay)**")
-            danger = fc_status[fc_status["status"] == "danger"].sort_values("gap_pct").head(15)
+            danger = fc_status[fc_status["status"] ==
+                               "danger"].sort_values("gap_pct").head(15)
+            danger = danger.sort_values("zone")
             if danger.empty:
                 alert_box("✅ Không có điểm bán trong nguy hiểm", "g")
             for _, r in danger.iterrows():
-                needed = fmt_vnd(r["needed_pace"]) if r["needed_pace"] > 0 else "N/A"
+                needed = fmt_vnd(
+                    r["needed_pace"]) if r["needed_pace"] > 0 else "N/A"
                 alert_box(
                     f"🔴 <b>{r['supermarket_name']}</b> ({r['zone']}) — "
                     f"đạt <b>{r['actual_pct']:.1f}%</b> FC | "
@@ -284,18 +293,20 @@ def render(filters: dict, daily_df):
                     f"cần {needed} VND/ngày", "r"
                 )
         with col2:
-            st.markdown("**🟡 Cần theo dõi (có thể không đạt nếu không cải thiện)**")
-            warn = fc_status[fc_status["status"] == "warning"].sort_values("gap_pct").head(15)
+            st.markdown(
+                "**🟡 Cần theo dõi (có thể không đạt nếu không cải thiện)**")
+            warn = fc_status[fc_status["status"] ==
+                             "warning"].sort_values("gap_pct").head(15)
             if warn.empty:
                 alert_box("✅ Không có điểm bán cần theo dõi đặc biệt", "g")
             for _, r in warn.iterrows():
-                needed = fmt_vnd(r["needed_pace"]) if r["needed_pace"] > 0 else "N/A"
+                needed = fmt_vnd(
+                    r["needed_pace"]) if r["needed_pace"] > 0 else "N/A"
                 alert_box(
                     f"🟡 <b>{r['supermarket_name']}</b> ({r['zone']}) — "
                     f"đạt <b>{r['actual_pct']:.1f}%</b> FC | "
                     f"cần {needed} VND/ngày để hoàn thành", "w"
                 )
-
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown("**✅ Điểm bán đạt / vượt FC**")
         achieved_df = fc_status[fc_status["status"] == "achieved"].sort_values(
@@ -357,9 +368,11 @@ def render(filters: dict, daily_df):
         tbl.columns = ["Tên SM", "KV", "Zone", "FC (VND)", "Thực tế (VND)",
                        "% Đạt", "% KV tiến độ", "Gap (%)", "Tốc độ (%)", "Trạng thái"]
         for col in ["FC (VND)", "Thực tế (VND)"]:
-            tbl[col] = tbl[col].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "")
+            tbl[col] = tbl[col].apply(
+                lambda x: f"{x:,.0f}" if pd.notna(x) else "")
         for col in ["% Đạt", "% KV tiến độ", "Gap (%)", "Tốc độ (%)"]:
-            tbl[col] = tbl[col].apply(lambda x: f"{x:.1f}" if pd.notna(x) else "")
+            tbl[col] = tbl[col].apply(
+                lambda x: f"{x:.1f}" if pd.notna(x) else "")
         col_tbl, col_btn = st.columns([5, 1])
         with col_tbl:
             st.dataframe(tbl, width="stretch", hide_index=True)
