@@ -128,7 +128,7 @@ def render(filters: dict, daily_df):
         alert_box(f"⚠️ HHI = {hhi:.3f} — DS tập trung vào ít danh mục", "w")
     if we_lift > 20:
         alert_box(
-            f"📌 Cuối tuần mạnh hơn {we_lift:.0f}% — đảm bảo tồn kho T7–CN", "g")
+            f"📌 Cuối tuần bán tốt hơn {we_lift:.0f}% — đảm bảo tồn kho T7–CN", "g")
     low_sku_sm = outlet[outlet["sku_count"] < LOW_SKU_THRESHOLD]
     if len(low_sku_sm) > 0:
         alert_box(
