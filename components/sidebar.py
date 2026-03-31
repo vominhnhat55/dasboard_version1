@@ -10,7 +10,7 @@ from config import (
     DEFAULT_FC_GROWTH, DEFAULT_ALERT_PCT, DEFAULT_TOP_N, DEFAULT_LOOKBACK,
 )
 from auth.auth import get_current_user, logout
-from queries.sales import get_date_range, get_filter_options
+from queries.sales import get_date_range, get_filter_options, get_store_list
 
 
 def render_sidebar() -> dict:
@@ -39,9 +39,9 @@ def render_sidebar() -> dict:
         start = str(dr[0]) if len(dr) == 2 else str(mn)
         end = str(dr[1]) if len(dr) == 2 else str(mx)
 
-        # Area / Zone / Category
+        # Area / Zone / Store
         opts = get_filter_options()
-        sel_area, sel_zone, sel_cat = _render_dimension_filters(user, opts)
+        sel_area, sel_zone, sel_store_code = _render_dimension_filters(user, opts)
 
         # Forecast settings
         st.markdown("---")
@@ -59,14 +59,14 @@ def render_sidebar() -> dict:
         st.caption(f"📦 Nguồn: BigQuery · {BQ_TABLE}")
 
     return {
-        "start":     start,
-        "end":       end,
-        "area":      sel_area,
-        "zone":      sel_zone,
-        "category":  sel_cat,
-        "fc_pct":    fc_pct,
-        "alert_pct": alert_pct,
-        "top_n":     top_n,
+        "start":      start,
+        "end":        end,
+        "area":       sel_area,
+        "zone":       sel_zone,
+        "store_code": sel_store_code,
+        "fc_pct":     fc_pct,
+        "alert_pct":  alert_pct,
+        "top_n":      top_n,
     }
 
 
@@ -96,7 +96,7 @@ def _render_user_info(user):
 
 def _render_dimension_filters(user, opts) -> tuple:
     """
-    Render area + zone theo role:
+    Render area + zone + store_code theo role:
     - superadmin   → tự do chọn tất cả
     - area_manager → area cố định, zone tự chọn trong area
     - zone_manager → area + zone đều cố định (disabled)
@@ -123,7 +123,15 @@ def _render_dimension_filters(user, opts) -> tuple:
         sel_area = user.area
         sel_zone = user.zone
 
-    cats = ["Tất cả"] + sorted(opts["category"].unique().tolist())
-    sel_cat = st.selectbox("🏷️ Danh mục", cats)
+    stores_df = get_store_list(sel_area, sel_zone)
+    store_options = ["Tất cả"] + [
+        f"{r['supermarket_code']} — {r['supermarket_name']}"
+        for _, r in stores_df.iterrows()
+    ]
+    sel_store_label = st.selectbox("🏪 Store", store_options)
+    if sel_store_label == "Tất cả":
+        sel_store_code = "Tất cả"
+    else:
+        sel_store_code = sel_store_label.split(" — ")[0]
 
-    return sel_area, sel_zone, sel_cat
+    return sel_area, sel_zone, sel_store_code

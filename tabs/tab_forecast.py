@@ -12,7 +12,7 @@ from queries.sales import get_outlet_summary, get_category_weekly
 
 def render(filters: dict, daily_df):
     s, e = filters["start"], filters["end"]
-    a, z, c = filters["area"], filters["zone"], filters["category"]
+    a, z, sc = filters["area"], filters["zone"], filters["store_code"]
     fc_pct = filters["fc_pct"]
     fc_df = forecast_next_n_days(daily_df, fc_pct)
     total_rev = daily_df["revenue"].sum()
@@ -95,8 +95,8 @@ def render(filters: dict, daily_df):
     # ── Scorecard ─────────────────────────────────────────────────────────────
     st.markdown("---")
     section_header("📊 Scorecard hiệu quả kinh doanh")
-    outlet = get_outlet_summary(s, e, a, z, c)
-    cat_raw = get_category_weekly(s, e, a, z, c)
+    outlet = get_outlet_summary(s, e, a, z, sc)
+    cat_raw = get_category_weekly(s, e, a, z, sc)
     cat_sum = cat_raw.groupby("category")["revenue"].sum()
     top5_pct = outlet.nlargest(5, "revenue")["revenue"].sum() / total_rev * 100
     hhi = ((cat_sum / cat_sum.sum()) ** 2).sum()

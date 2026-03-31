@@ -1,22 +1,24 @@
 # pages/tab_outlet.py — Tab Điểm bán
+import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 
-from config import LOW_COVERAGE_DAYS, SURGE_THRESHOLD
+from config import LOW_COVERAGE_DAYS, SURGE_THRESHOLD, COLOR_SEQ
 from utils.helpers import (kpi_card, section_header, alert_box, update_fig,
                            fmt_vnd, chart_with_data, download_button)
-from queries.sales import get_outlet_summary, get_outlet_half_trend
+from queries.sales import (get_outlet_summary, get_outlet_half_trend,
+                           get_outlet_daily, get_store_list, get_forecast)
 
 
 def render(filters: dict):
     s, e = filters["start"], filters["end"]
-    a, z, c = filters["area"], filters["zone"], filters["category"]
+    a, z, sc = filters["area"], filters["zone"], filters["store_code"]
     top_n = filters["top_n"]
     alert_pct = filters["alert_pct"]
 
-    outlet = get_outlet_summary(s, e, a, z, c)
-    outlet_tr = get_outlet_half_trend(s, e, a, z, c)
+    outlet = get_outlet_summary(s, e, a, z, sc)
+    outlet_tr = get_outlet_half_trend(s, e, a, z, sc)
     outlet["rank"] = outlet["revenue"].rank(ascending=False).astype(int)
 
     avg_rev = outlet["revenue"].mean()
@@ -149,3 +151,165 @@ def render(filters: dict):
     with col_btn:
         st.markdown("<br><br>", unsafe_allow_html=True)
         download_button(tbl, "all_outlets", "⬇️ Tải CSV")
+
+    # ── Drill-down DS theo ngày ───────────────────────────────────────────────
+    st.markdown("---")
+    section_header("🔍 Drill-down — DS theo ngày từng siêu thị")
+
+    stores_df = get_store_list(a, z)
+    store_options = ["Tất cả (tổng hợp)"] + [
+        f"{r['supermarket_code']} — {r['supermarket_name']}"
+        for _, r in stores_df.iterrows()
+    ]
+    sel_store_label = st.selectbox(
+        "🏪 Chọn siêu thị",
+        store_options,
+        help="Chọn 1 SM để xem chi tiết từng ngày, hoặc 'Tất cả' để xem tổng hợp",
+        key="outlet_drilldown_store",
+    )
+
+    if sel_store_label == "Tất cả (tổng hợp)":
+        sel_store_code = "Tất cả"
+        sel_store_name = "Tất cả siêu thị"
+    else:
+        sel_store_code = sel_store_label.split(" — ")[0]
+        sel_store_name = sel_store_label.split(" — ")[1]
+
+    with st.spinner("Đang query..."):
+        daily = get_outlet_daily(s, e, a, z, sc, sel_store_code)
+        fc_df = get_forecast(s, e, a, z)
+
+    if daily.empty:
+        st.warning("Không có dữ liệu cho lựa chọn này.")
+        return
+
+    daily_agg = daily.groupby("report_date").agg(
+        revenue=("revenue", "sum"), qty=("qty", "sum")
+    ).reset_index()
+    daily_agg["ma7"] = daily_agg["revenue"].rolling(7, min_periods=1).mean()
+
+    fc_store = None
+    if sel_store_code != "Tất cả" and not fc_df.empty:
+        fc_store = fc_df[fc_df["store_code"] == sel_store_code]
+
+    # KPIs
+    total_rev_dd = daily_agg["revenue"].sum()
+    total_qty_dd = daily_agg["qty"].sum()
+    avg_day_dd = daily_agg["revenue"].mean()
+    peak_day = daily_agg.loc[daily_agg["revenue"].idxmax()]
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        kpi_card("💰 Tổng DS", fmt_vnd(total_rev_dd)+" VND")
+    with c2:
+        kpi_card("📊 TB / ngày", fmt_vnd(avg_day_dd)+" VND")
+    with c3:
+        kpi_card("📦 Sản lượng", f"{int(total_qty_dd):,}")
+    with c4:
+        kpi_card("🏆 Ngày đỉnh",
+                 peak_day["report_date"].strftime("%d/%m"),
+                 fmt_vnd(peak_day["revenue"])+" VND", "pos")
+
+    if fc_store is not None and not fc_store.empty:
+        fc_total = fc_store["fc_revenue"].sum()
+        fc_pct = total_rev_dd / fc_total * 100 if fc_total > 0 else 0
+        st.markdown("<br>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            kpi_card("🎯 FC kỳ này", fmt_vnd(fc_total)+" VND")
+        with c2:
+            kpi_card("📊 % Đạt FC", f"{fc_pct:.1f}%", "",
+                     "pos" if fc_pct >= 85 else "neg")
+        with c3:
+            kpi_card("💸 Còn cần",
+                     fmt_vnd(max(0, fc_total - total_rev_dd))+" VND",
+                     "để đạt FC", "neu")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Chart DS theo ngày
+    fig_dd = go.Figure()
+    fig_dd.add_bar(x=daily_agg["report_date"], y=daily_agg["revenue"],
+                   name="Doanh số", marker_color="#4c6ef5", opacity=.8)
+    fig_dd.add_scatter(x=daily_agg["report_date"], y=daily_agg["ma7"],
+                       name="MA7", line=dict(color="#00c48c", width=2))
+
+    if fc_store is not None and not fc_store.empty:
+        fc_total = fc_store["fc_revenue"].sum()
+        total_days = (pd.to_datetime(e) - pd.to_datetime(s)).days + 1
+        fc_per_day = fc_total / total_days
+        fig_dd.add_hline(
+            y=fc_per_day, line_dash="dot",
+            line_color="#ffaa44", line_width=2,
+            annotation_text=f"FC TB/ngày: {fmt_vnd(fc_per_day)}",
+            annotation_font_color="#ffaa44",
+        )
+
+    chart_with_data(
+        fig=fig_dd,
+        df=daily_agg.rename(columns={"report_date": "Ngày",
+                                     "revenue": "Doanh số (VND)",
+                                     "qty": "Sản lượng", "ma7": "MA7"}),
+        filename=f"daily_{sel_store_code}",
+        title=f"DS theo ngày — {sel_store_name}", height=360,
+        format_cols={"Doanh số (VND)": "vnd", "MA7": "vnd"},
+    )
+
+    # FC theo tháng nếu chọn cụ thể 1 SM
+    if fc_store is not None and not fc_store.empty:
+        st.markdown("<br>", unsafe_allow_html=True)
+        section_header("📅 FC vs Thực tế theo tháng")
+
+        daily_agg["month"] = daily_agg["report_date"].dt.month
+        act_month = daily_agg.groupby("month")["revenue"].sum().reset_index()
+        fc_month = fc_store[["month", "fc_revenue"]].copy()
+        merged = act_month.merge(fc_month, on="month", how="outer").fillna(0)
+        merged["month_name"] = merged["month"].apply(lambda m: f"Tháng {m}")
+        merged["pct"] = (merged["revenue"] / merged["fc_revenue"] * 100).round(1)
+
+        fig_fc = go.Figure()
+        fig_fc.add_bar(x=merged["month_name"], y=merged["fc_revenue"],
+                       name="FC", marker_color="#2a3a6e",
+                       text=merged["fc_revenue"].apply(fmt_vnd),
+                       textposition="outside", textfont=dict(color="#8b8fa8", size=10))
+        fig_fc.add_bar(x=merged["month_name"], y=merged["revenue"],
+                       name="Thực tế", marker_color="#4c6ef5",
+                       text=merged["revenue"].apply(fmt_vnd),
+                       textposition="outside", textfont=dict(color="#fff", size=10))
+        fig_fc.update_layout(barmode="group")
+        chart_with_data(
+            fig=fig_fc, df=merged,
+            filename=f"fc_monthly_{sel_store_code}",
+            title=f"FC vs Thực tế theo tháng — {sel_store_name}", height=300,
+            display_cols={"month_name": "Tháng", "fc_revenue": "FC (VND)",
+                          "revenue": "Thực tế (VND)", "pct": "% Đạt"},
+            format_cols={"fc_revenue": "vnd", "revenue": "vnd"},
+        )
+
+    # So sánh nhiều SM nếu chọn "Tất cả"
+    if sel_store_code == "Tất cả":
+        st.markdown("<br>", unsafe_allow_html=True)
+        section_header("📊 So sánh DS theo ngày — Top SM")
+
+        top_sm = (daily.groupby(["supermarket_code", "supermarket_name"])["revenue"]
+                  .sum().nlargest(top_n).reset_index())
+        daily_top = daily[daily["supermarket_code"].isin(top_sm["supermarket_code"])]
+        daily_top_agg = daily_top.groupby(
+            ["supermarket_name", "report_date"])["revenue"].sum().reset_index()
+
+        fig_top = px.line(
+            daily_top_agg, x="report_date", y="revenue",
+            color="supermarket_name",
+            color_discrete_sequence=COLOR_SEQ,
+            labels={"report_date": "Ngày", "revenue": "Doanh số (VND)",
+                    "supermarket_name": "Siêu thị"},
+        )
+        fig_top.update_traces(mode="lines+markers", marker=dict(size=4))
+        chart_with_data(
+            fig=fig_top, df=daily_top_agg,
+            filename="top_outlets_daily_trend",
+            title=f"Xu hướng DS theo ngày — Top {top_n} SM", height=380,
+            display_cols={"supermarket_name": "Siêu thị",
+                          "report_date": "Ngày", "revenue": "DS (VND)"},
+            format_cols={"revenue": "vnd"},
+        )

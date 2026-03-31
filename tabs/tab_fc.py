@@ -104,9 +104,9 @@ def render(filters: dict):
     """Render Tab FC."""
     s, e = filters["start"], filters["end"]
     a, z = filters["area"], filters["zone"]
-    c = filters["category"]
+    sc = filters["store_code"]
     top_n = filters["top_n"]
-    outlet = get_outlet_summary(s, e, a, z, c)
+    outlet = get_outlet_summary(s, e, a, z, sc)
     fc_df = get_forecast(s, e, a, z)
 
     if fc_df.empty:
