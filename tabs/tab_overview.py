@@ -91,7 +91,7 @@ def render(filters: dict, daily_df):
         ))
         chart_with_data(
             fig=fig2, df=weekly, filename="weekly_revenue",
-            title="Doanh số theo tuần (WoW%)", height=280,
+            title="Doanh số theo tuần (Tuần/Tuần -1 %)", height=280,
             display_cols={"week": "Tuần",
                           "revenue": "Doanh số (VND)", "wow": "WoW%"},
             format_cols={"revenue": "vnd", "wow": "pct"},
@@ -358,7 +358,6 @@ def render(filters: dict, daily_df):
             format_cols={"fc_total": "vnd", "revenue": "vnd",
                          "actual_pct": "float", "gap_pct": "float", "pace_ratio": "float"},
         )
-
         # ── Full table ────────────────────────────────────────────────────────
         st.markdown("<br>", unsafe_allow_html=True)
         section_header("📋 Bảng chi tiết tất cả điểm bán vs FC")

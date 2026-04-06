@@ -12,6 +12,7 @@ from queries.sales import get_category_weekly
 def render(filters: dict):
     s, e = filters["start"], filters["end"]
     a, z, sc = filters["area"], filters["zone"], filters["store_code"]
+
     cat_raw = get_category_weekly(s, e, a, z, sc)
     cat = (cat_raw.groupby("category")
            .agg(revenue=("revenue", "sum"), qty=("qty", "sum"),
@@ -29,9 +30,7 @@ def render(filters: dict):
         kpi_card("📊 Số danh mục",       str(len(cat)))
     with c3:
         kpi_card("🔖 SKU TB / danh mục", f"{cat['skus'].mean():.0f}")
-
     st.markdown("<br>", unsafe_allow_html=True)
-
     col1, col2 = st.columns(2)
     with col1:
         fig = px.pie(cat, names="category", values="revenue",
