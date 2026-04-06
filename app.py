@@ -22,11 +22,9 @@ with st.spinner("⚡ Đang lấy dữ liệu..."):
         filters["start"], filters["end"],
         filters["area"], filters["zone"], filters["store_code"],
     )
-
 if daily_df.empty:
     st.warning("⚠️ Không có dữ liệu với bộ lọc hiện tại.")
     st.stop()
-
 st.title("📊 DASHBOARD DOANH SỐ")
 st.markdown(
     f"<span style='color:#8b8fa8;font-size:13px;'>"
@@ -37,15 +35,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown("<br>", unsafe_allow_html=True)
-
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🏠 Tổng quan",
     "🏪 Điểm bán",
     "📦 Sản phẩm",
+    "🔮 Dự báo",
     "🎁 CTKM",
-    "🔮 Dự báo"
 ])
-
 with tab1:
     tab_overview.render(filters, daily_df)
 with tab2:
@@ -55,4 +51,4 @@ with tab3:
 with tab4:
     tab_forecast.render(filters, daily_df)
 with tab5:
-    "check"
+    "Đang phát triển"

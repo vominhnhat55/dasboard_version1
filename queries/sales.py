@@ -76,7 +76,7 @@ def get_weekly(start, end, area, zone, store_code) -> pd.DataFrame:
     f = build_where(start, end, area, zone, store_code)
     sql = f"""
         SELECT
-            EXTRACT(ISOWEEK FROM report_date) AS week,
+            EXTRACT(WEEK(SUNDAY) FROM report_date) AS week,
             SUM(item_total) AS revenue
         FROM `{BQ_PROJECT}.{BQ_TABLE}`
         WHERE type = 'X' {f}
