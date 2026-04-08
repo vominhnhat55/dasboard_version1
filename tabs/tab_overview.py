@@ -13,7 +13,7 @@ from tabs.tab_fc import _compute_fc_status, DANGER_PCT, WARNING_PCT
 
 def render(filters: dict, daily_df):
     s, e = filters["start"], filters["end"]
-    a, z, sc = filters["area"], filters["zone"], filters["store_code"]
+    a, z, sc = filters["area"], filters["zone"], filters["store_codes"]
     weekly = get_weekly(s, e, a, z, sc)
     area_df = get_area_zone(s, e, a, z, sc)
     fc_df = forecast_next_n_days(daily_df, filters["fc_pct"])
@@ -148,7 +148,7 @@ def render(filters: dict, daily_df):
     st.markdown("---")
     section_header("🎯 Tiến độ vs Forecast")
     outlet = get_outlet_summary(s, e, a, z, sc)
-    fc_df_raw = get_forecast(s, a, z)
+    fc_df_raw = get_forecast(s, a, z, store_codes=sc)
 
     if fc_df_raw.empty:
         st.info("⚠️ Không có dữ liệu FC trong khoảng thời gian này.")

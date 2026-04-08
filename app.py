@@ -6,7 +6,7 @@ from auth.auth import require_login, get_current_user
 from components.sidebar import render_sidebar
 from queries.sales import get_daily
 from tabs import (tab_overview, tab_outlet, tab_product,
-                  tab_forecast)
+                  tab_forecast, tab_category, tab_fc, tab_ctkm)
 st.set_page_config(
     page_title="Sales dashboard",
     page_icon="📊",
@@ -20,7 +20,7 @@ filters = render_sidebar()
 with st.spinner("⚡ Đang lấy dữ liệu..."):
     daily_df = get_daily(
         filters["start"], filters["end"],
-        filters["area"], filters["zone"], filters["store_code"],
+        filters["area"], filters["zone"], filters["store_codes"],
     )
 if daily_df.empty:
     st.warning("⚠️ Không có dữ liệu với bộ lọc hiện tại.")
@@ -52,4 +52,4 @@ with tab3:
 with tab4:
     tab_forecast.render(filters, daily_df)
 with tab5:
-    "Đang phát triển"
+    tab_ctkm.render(filters)

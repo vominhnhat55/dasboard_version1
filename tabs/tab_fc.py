@@ -50,15 +50,14 @@ def _compute_fc_status(outlet_df: pd.DataFrame, fc_df: pd.DataFrame,
     fc_in_range = fc_df[fc_df["month"].isin(months_in_range)]
     fc_use = fc_in_range if not fc_in_range.empty else fc_df
     fc_agg = (fc_use
-              .groupby("store_code")["fc_revenue"].sum()
+              .groupby("supermarket_code")["fc_revenue"].sum()
               .reset_index().rename(columns={"fc_revenue": "fc_total"}))
 
     # Actual
     act = outlet_df[["supermarket_code", "supermarket_name", "area", "zone",
                      "revenue", "active_days", "rev_per_day"]].copy()
-    act = act.rename(columns={"supermarket_code": "store_code"})
     # Merge
-    df = act.merge(fc_agg, on="store_code", how="left")
+    df = act.merge(fc_agg, on="supermarket_code", how="left")
     df["fc_total"] = df["fc_total"].fillna(0)
 
     # Số ngày trong khoảng
@@ -107,10 +106,10 @@ def render(filters: dict):
     """Render Tab FC."""
     s, e = filters["start"], filters["end"]
     a, z = filters["area"], filters["zone"]
-    sc = filters["store_code"]
+    sc = filters["store_codes"]
     top_n = filters["top_n"]
     outlet = get_outlet_summary(s, e, a, z, sc)
-    fc_df = get_forecast(s, a, z)
+    fc_df = get_forecast(s, a, z, store_codes=sc)
 
     if fc_df.empty:
         st.warning("⚠️ Không có dữ liệu FC trong khoảng thời gian này. "
