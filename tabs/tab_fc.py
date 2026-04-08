@@ -42,8 +42,11 @@ def _compute_fc_status(outlet_df: pd.DataFrame, fc_df: pd.DataFrame,
     end_dt = pd.to_datetime(end)
     today = min(end_dt, pd.Timestamp.today().normalize())
 
-    # FC: lấy tháng trong range, fallback lấy toàn bộ nếu không có
-    months_in_range = list(range(start_dt.month, end_dt.month + 1))
+    # FC: include all months covered by the date range
+    if start_dt.year == end_dt.year and start_dt.month == end_dt.month:
+        months_in_range = [start_dt.month]
+    else:
+        months_in_range = list(range(start_dt.month, end_dt.month + 1))
     fc_in_range = fc_df[fc_df["month"].isin(months_in_range)]
     fc_use = fc_in_range if not fc_in_range.empty else fc_df
     fc_agg = (fc_use
@@ -107,7 +110,7 @@ def render(filters: dict):
     sc = filters["store_code"]
     top_n = filters["top_n"]
     outlet = get_outlet_summary(s, e, a, z, sc)
-    fc_df = get_forecast(s, e, a, z)
+    fc_df = get_forecast(s, a, z)
 
     if fc_df.empty:
         st.warning("⚠️ Không có dữ liệu FC trong khoảng thời gian này. "

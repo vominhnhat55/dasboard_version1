@@ -46,7 +46,7 @@ def render(filters: dict):
         # Load data
         with st.spinner("Đang query..."):
             daily = get_outlet_daily(s, e, a, z, sc, sel_store_code)
-            fc_df = get_forecast(s, e, a, z)
+            fc_df = get_forecast(s, a, z)
 
         if daily.empty:
             st.warning("Không có dữ liệu cho lựa chọn này.")
