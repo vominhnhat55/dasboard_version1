@@ -30,8 +30,9 @@ st.markdown(
     f"<span style='color:#8b8fa8;font-size:13px;'>"
     f"BigQuery · {filters['start']} → {filters['end']} · "
     f"{daily_df['report_date'].nunique()} ngày · "
-    f"Phạm vi: <b style='color:#fff'>{user.display_scope}</b>"
-    f"</span>",
+    f"Phạm vi: <b style='color:#fff'>"
+    f"{user.display_scope if user else 'N/A'}"
+    f"</b></span>",
     unsafe_allow_html=True,
 )
 st.markdown("<br>", unsafe_allow_html=True)

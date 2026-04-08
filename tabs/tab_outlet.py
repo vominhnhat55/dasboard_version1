@@ -26,19 +26,17 @@ def render(filters: dict):
     q80 = outlet["revenue"].quantile(0.8)
 
     # ── KPIs ─────────────────────────────────────────────────────────────────
-    section_header("🏪 Hiệu quả điểm bán")
+    section_header("🏪 Điểm bán")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        kpi_card("🏪 Tổng điểm bán",     str(len(outlet)))
+        kpi_card("🏪 Số liệu từ ",     str(len(outlet))+" Điểm bán")
     with c2:
         kpi_card("💰 DS TB / điểm bán",  fmt_vnd(avg_rev) + " VND")
     with c3:
         kpi_card("⭐ Ngưỡng Top 20%",     fmt_vnd(q80) + " VND")
     with c4:
         kpi_card("⚠️ Ngưỡng Bot 20%",    fmt_vnd(q20) + " VND")
-
     st.markdown("<br>", unsafe_allow_html=True)
-
     # ── Top & Bottom ──────────────────────────────────────────────────────────
     col1, col2 = st.columns(2)
     with col1:
@@ -177,7 +175,7 @@ def render(filters: dict):
 
     with st.spinner("Đang query..."):
         daily = get_outlet_daily(s, e, a, z, sc, sel_store_code)
-        fc_df = get_forecast(s, e, a, z)
+        fc_df = get_forecast(s, a, z)
 
     if daily.empty:
         st.warning("Không có dữ liệu cho lựa chọn này.")
@@ -265,7 +263,8 @@ def render(filters: dict):
         fc_month = fc_store[["month", "fc_revenue"]].copy()
         merged = act_month.merge(fc_month, on="month", how="outer").fillna(0)
         merged["month_name"] = merged["month"].apply(lambda m: f"Tháng {m}")
-        merged["pct"] = (merged["revenue"] / merged["fc_revenue"] * 100).round(1)
+        merged["pct"] = (merged["revenue"] /
+                         merged["fc_revenue"] * 100).round(1)
 
         fig_fc = go.Figure()
         fig_fc.add_bar(x=merged["month_name"], y=merged["fc_revenue"],
@@ -293,7 +292,8 @@ def render(filters: dict):
 
         top_sm = (daily.groupby(["supermarket_code", "supermarket_name"])["revenue"]
                   .sum().nlargest(top_n).reset_index())
-        daily_top = daily[daily["supermarket_code"].isin(top_sm["supermarket_code"])]
+        daily_top = daily[daily["supermarket_code"].isin(
+            top_sm["supermarket_code"])]
         daily_top_agg = daily_top.groupby(
             ["supermarket_name", "report_date"])["revenue"].sum().reset_index()
 

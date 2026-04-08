@@ -259,34 +259,42 @@ def get_category_weekly(start, end, area, zone, store_code) -> pd.DataFrame:
 # ── FC queries ────────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def get_forecast(start, end, area, zone) -> pd.DataFrame:
+def get_forecast(start, area="Tất cả", zone="Tất cả") -> pd.DataFrame:
     """
     FC theo tháng từ bảng forecast.
     Lấy toàn bộ FC của năm hiện tại — không filter month cứng
     để tránh mất data khi date range lệch với FC period.
-    """
-    f = ""
-    if area != "Tất cả":
-        f += f" AND area = '{area}'"
-    if zone != "Tất cả":
-        f += f" AND zone = '{zone}'"
 
+    Bảng forecast chỉ có: store_code, year, month, fc_revenue
+    → area/zone lọc qua join với bảng sales (lấy từ MAX 1 record/store).
+    """
     start_y = int(pd.to_datetime(start).strftime("%Y"))
+
+    area_filter = f"AND s.area = '{area}'" if area != "Tất cả" else ""
+    zone_filter = f"AND s.zone = '{zone}'" if zone != "Tất cả" else ""
 
     sql = f"""
         SELECT
-            store_code,
-            store_name,
-            area,
-            zone,
-            month,
-            year,
-            SUM(fc_revenue) AS fc_revenue
-        FROM `{BQ_PROJECT}.sales_db.forecast`
-        WHERE year = {start_y}
-          {f}
-        GROUP BY 1,2,3,4,5,6
-        ORDER BY 1,5
+            f.store_code,
+            COALESCE(s.area,   '') AS area,
+            COALESCE(s.zone,   '') AS zone,
+            f.month,
+            f.year,
+            f.fc_revenue
+        FROM (
+            SELECT store_code, month, year, SUM(fc_revenue) AS fc_revenue
+            FROM `{BQ_PROJECT}.sales_db.forecast`
+            WHERE year = {start_y}
+            GROUP BY 1, 2, 3
+        ) f
+        LEFT JOIN (
+            SELECT supermarket_code, MAX(area) AS area, MAX(zone) AS zone
+            FROM `{BQ_PROJECT}.{BQ_TABLE}`
+            WHERE type = 'X'
+            GROUP BY 1
+        ) s ON f.store_code = s.supermarket_code
+        WHERE 1=1 {area_filter} {zone_filter}
+        ORDER BY f.store_code, f.month
     """
     return run_query(sql)
 

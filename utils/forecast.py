@@ -11,23 +11,20 @@ from config import FORECAST_DAYS, WMA_WINDOW
 def compute_wma(revenue: np.ndarray, window: int = WMA_WINDOW) -> float:
     """
     Weighted Moving Average — ngày gần hơn có trọng số cao hơn.
-
     Công thức:
         n   = min(window, len(revenue))
         w   = linspace(1 → 3, n phần tử)
         WMA = Σ(revenue[-n:] × w) / Σ(w)
     """
-    n   = min(window, len(revenue))
-    w   = np.linspace(1, 3, n)
+    n = min(window, len(revenue))
+    w = np.linspace(1, 3, n)
     return float(np.average(revenue[-n:], weights=w))
 
 
 def compute_dow_index(daily_df: pd.DataFrame) -> dict:
     """
     Tính hệ số điều chỉnh theo thứ trong tuần (Day-of-Week index).
-
     DOW_index[thứ] = DS_TB_ngày_đó / DS_TB_toàn_kỳ
-
     VD: DOW_index[5] = 1.30  →  T7 cao hơn TB 30%
     """
     global_mean = daily_df["revenue"].mean()
@@ -59,13 +56,13 @@ def forecast_next_n_days(
     if len(daily_df) < 3:
         return pd.DataFrame(columns=["date", "forecast"])
 
-    wma      = compute_wma(daily_df["revenue"].values)
-    dow_idx  = compute_dow_index(daily_df)
+    wma = compute_wma(daily_df["revenue"].values)
+    dow_idx = compute_dow_index(daily_df)
     last_day = daily_df["report_date"].max()
 
     rows = []
     for i in range(1, n_days + 1):
-        d      = last_day + timedelta(days=i)
+        d = last_day + timedelta(days=i)
         factor = dow_idx.get(d.dayofweek, 1.0)
         rows.append({
             "date":     d,
@@ -85,8 +82,8 @@ def estimate_month_forecast(
 
         FC_tháng = DS_thực_tế + FC_TB/ngày × số_ngày_còn_lại
     """
-    last_day      = daily_df["report_date"].max()
-    remain_days   = max(0, (month_end - last_day).days)
-    wma           = compute_wma(daily_df["revenue"].values)
-    daily_fc_avg  = wma * (1 + fc_growth_pct / 100)
+    last_day = daily_df["report_date"].max()
+    remain_days = max(0, (month_end - last_day).days)
+    wma = compute_wma(daily_df["revenue"].values)
+    daily_fc_avg = wma * (1 + fc_growth_pct / 100)
     return actual_revenue + daily_fc_avg * remain_days

@@ -148,7 +148,7 @@ def render(filters: dict, daily_df):
     st.markdown("---")
     section_header("🎯 Tiến độ vs Forecast")
     outlet = get_outlet_summary(s, e, a, z, sc)
-    fc_df_raw = get_forecast(s, e, a, z)
+    fc_df_raw = get_forecast(s, a, z)
 
     if fc_df_raw.empty:
         st.info("⚠️ Không có dữ liệu FC trong khoảng thời gian này.")
