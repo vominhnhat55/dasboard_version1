@@ -41,7 +41,7 @@ def render_sidebar() -> dict:
 
         # Area / Zone / Store
         opts = get_filter_options()
-        sel_area, sel_zone, sel_store_codes = _render_dimension_filters(user, opts)
+        sel_area, sel_zone, sel_store_code = _render_dimension_filters(user, opts)
 
         # Forecast settings
         st.markdown("---")
@@ -63,7 +63,7 @@ def render_sidebar() -> dict:
         "end":        end,
         "area":       sel_area,
         "zone":       sel_zone,
-        "store_codes": sel_store_codes,
+        "store_code": sel_store_code,
         "fc_pct":     fc_pct,
         "alert_pct":  alert_pct,
         "top_n":      top_n,

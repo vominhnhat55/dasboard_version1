@@ -17,7 +17,7 @@ def render(filters: dict):
     """Render Tab Drill-down."""
     s, e = filters["start"], filters["end"]
     a, z = filters["area"], filters["zone"]
-    sc = filters["store_code"]
+    sc = filters["store_codes"]
     # ── Sub-tabs ──────────────────────────────────────────────────────────────
     sub1, sub2 = st.tabs(["🏪 Theo Siêu thị", "📦 Theo Sản phẩm"])
 
@@ -46,7 +46,7 @@ def render(filters: dict):
         # Load data
         with st.spinner("Đang query..."):
             daily = get_outlet_daily(s, e, a, z, sc, sel_store_code)
-            fc_df = get_forecast(s, a, z)
+            fc_df = get_forecast(s, a, z, store_codes=sc)
 
         if daily.empty:
             st.warning("Không có dữ liệu cho lựa chọn này.")
@@ -68,7 +68,7 @@ def render(filters: dict):
         # FC của store này (theo tháng)
         fc_store = None
         if sel_store_code != "Tất cả" and not fc_df.empty:
-            fc_store = fc_df[fc_df["store_code"] == sel_store_code]
+            fc_store = fc_df[fc_df["supermarket_code"] == sel_store_code]
 
         # KPIs
         total_rev = daily_agg["revenue"].sum()

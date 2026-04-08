@@ -13,7 +13,7 @@ from queries.sales import (get_outlet_summary, get_outlet_half_trend,
 
 def render(filters: dict):
     s, e = filters["start"], filters["end"]
-    a, z, sc = filters["area"], filters["zone"], filters["store_code"]
+    a, z, sc = filters["area"], filters["zone"], filters["store_codes"]
     top_n = filters["top_n"]
     alert_pct = filters["alert_pct"]
 
@@ -175,7 +175,7 @@ def render(filters: dict):
 
     with st.spinner("Đang query..."):
         daily = get_outlet_daily(s, e, a, z, sc, sel_store_code)
-        fc_df = get_forecast(s, a, z)
+        fc_df = get_forecast(s, a, z, store_codes=sc)
 
     if daily.empty:
         st.warning("Không có dữ liệu cho lựa chọn này.")
@@ -188,7 +188,7 @@ def render(filters: dict):
 
     fc_store = None
     if sel_store_code != "Tất cả" and not fc_df.empty:
-        fc_store = fc_df[fc_df["store_code"] == sel_store_code]
+        fc_store = fc_df[fc_df["supermarket_code"] == sel_store_code]
 
     # KPIs
     total_rev_dd = daily_agg["revenue"].sum()

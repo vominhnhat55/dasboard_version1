@@ -12,7 +12,7 @@ from queries.sales import (get_product_summary, get_sku_summary,
 
 def render(filters: dict):
     s, e = filters["start"], filters["end"]
-    a, z, sc = filters["area"], filters["zone"], filters["store_code"]
+    a, z, sc = filters["area"], filters["zone"], filters["store_codes"]
     top_n = filters["top_n"]
 
     prod = get_product_summary(s, e, a, z, sc)

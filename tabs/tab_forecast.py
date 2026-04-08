@@ -12,7 +12,7 @@ from queries.sales import get_outlet_summary, get_category_weekly
 
 def render(filters: dict, daily_df):
     s, e = filters["start"], filters["end"]
-    a, z, sc = filters["area"], filters["zone"], filters["store_code"]
+    a, z, sc = filters["area"], filters["zone"], filters["store_codes"]
     fc_pct = filters["fc_pct"]
     fc_df = forecast_next_n_days(daily_df, fc_pct)
     total_rev = daily_df["revenue"].sum()
