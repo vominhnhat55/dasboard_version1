@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 
 from config import COLOR_SEQ
 from utils.helpers import kpi_card, section_header, alert_box, update_fig, fmt_vnd, chart_with_data, download_button, fmt_qty
-from utils.forecast import forecast_next_n_days
+from utils.forecast import forecast_next_n_days, compute_wma, compute_dow_index
 from queries.sales import get_weekly, get_area_zone, get_outlet_summary, get_forecast
 from tabs.tab_fc import _compute_fc_status, DANGER_PCT, WARNING_PCT
 
@@ -38,60 +38,90 @@ def render(filters: dict, daily_df):
         kpi_card("📆 Số tuần",         str(weekly["week"].nunique()))
     st.markdown("<br>", unsafe_allow_html=True)
     # ── Trend chart ───────────────────────────────────────────────────────────
-    section_header("📆 Doanh số theo ngày")
-    daily_df = daily_df.copy()
-    daily_df["ma7"] = daily_df["revenue"].rolling(7, min_periods=1).mean()
-    fig = go.Figure()
-    fig.add_bar(x=daily_df["report_date"], y=daily_df["revenue"],
-                name="Doanh số", marker_color="#4c6ef5", opacity=.75)
-    fig.add_scatter(x=daily_df["report_date"], y=daily_df["ma7"],
-                    name="MA7", line=dict(color="#00c48c", width=2))
-    if not fc_df.empty:
-        fig.add_scatter(
-            x=fc_df["date"], y=fc_df["forecast"], name="Dự báo 7 ngày",
-            line=dict(color="#ffaa44", width=2, dash="dash"),
-            mode="lines+markers", marker=dict(size=6, color="#ffaa44"),
-            fill="tozeroy", fillcolor="rgba(255,170,68,.07)",
-        )
-
-    # Chuẩn bị data cho bảng
-    trend_data = daily_df[["report_date", "revenue", "qty", "ma7"]].copy()
-    if not fc_df.empty:
-        fc_rows = fc_df.rename(
-            columns={"date": "report_date", "forecast": "revenue"})
-        fc_rows["qty"] = None
-        fc_rows["ma7"] = None
-        fc_rows["_type"] = "Dự báo"
-        trend_data["_type"] = "Thực tế"
-        trend_data = pd.concat([trend_data, fc_rows], ignore_index=True)
-    else:
-        trend_data["_type"] = "Thực tế"
-
-    chart_with_data(
-        fig=fig, df=trend_data, filename="daily_revenue",
-        title="Doanh số thực + MA7 + Dự báo 7 ngày", height=340,
-        display_cols={"report_date": "Ngày", "revenue": "Doanh số (VND)",
-                      "qty": "Sản lượng", "ma7": "MA7", "_type": "Loại"},
-        format_cols={"revenue": "vnd", "ma7": "vnd"},
-    )
 
     # ── WoW & DOW ────────────────────────────────────────────────────────────
     col1, col2 = st.columns(2)
     with col1:
         weekly = weekly.copy()
         weekly["wow"] = weekly["revenue"].pct_change() * 100
-        colors = ["#00c48c" if (pd.isna(v) or v >= 0)
-                  else "#ff5b5b" for v in weekly["wow"]]
+
+        # ── Current week forecast (WMA × DOW factors) ────────────────────────
+        wma_val = compute_wma(daily_df["revenue"].values)
+        dow_idx = compute_dow_index(daily_df)
+        recent_dates = pd.date_range(
+            daily_df["report_date"].max() - pd.Timedelta(days=6),
+            daily_df["report_date"].max(),
+        )
+        current_week_forecast = sum(
+            wma_val * dow_idx.get(d.dayofweek, 1.0) for d in recent_dates
+        )
+        current_week_num = weekly["week"].max()
+
+        # Build display df: actual weeks + current week forecast
+        weekly_disp = pd.concat([
+            weekly,
+            pd.DataFrame({
+                "week": [current_week_num],
+                "revenue": [current_week_forecast],
+                "wow": [None],
+            }),
+        ], ignore_index=True)
+
+        # ── Combo chart: bars (revenue) + line (WoW%) ──────────────────────────
+        labels = [f"Tuần {w}" for w in weekly_disp["week"]]
+
+        # Actual weeks: blue bars
+        actual_labels = labels[:-1]
+        actual_rev = weekly_disp["revenue"].iloc[:-1].tolist()
         fig2 = go.Figure(go.Bar(
-            x=[f"Tuần {w}" for w in weekly["week"]], y=weekly["revenue"],
-            marker_color=colors,
-            text=[
-                f"{v:+.1f}%" if not pd.isna(v) else "" for v in weekly["wow"]],
-            textposition="outside", textfont=dict(color="#fff", size=10),
+            x=actual_labels, y=actual_rev,
+            name="Doanh số",
+            marker_color="#4c6ef5",
+            text=[fmt_vnd(v) for v in actual_rev],
+            textposition="outside",
+            textfont=dict(color="#fff", size=9),
         ))
+
+        # Forecast week: purple bar (last row)
+        fig2.add_bar(
+            x=[labels[-1]], y=[weekly_disp["revenue"].iloc[-1]],
+            name="FC Dự báo",
+            marker_color="#ffaa44",
+            marker_opacity=0.75,
+            text=[fmt_vnd(weekly_disp["revenue"].iloc[-1])],
+            textposition="outside",
+            textfont=dict(color="#fff", size=9),
+        )
+
+        # WoW% line on secondary y-axis
+        fig2.add_trace(go.Scatter(
+            x=labels, y=weekly_disp["wow"],
+            name="%tuần/tuần-1", mode="lines+markers+text",
+            yaxis="y2",
+            line=dict(color="#ffaa44", width=2.5),
+            marker=dict(size=8, color="#ffaa44"),
+            text=[f"{v:+.1f}%" if pd.notna(v)
+                  else "" for v in weekly_disp["wow"]],
+            textposition="top center",
+            textfont=dict(color="#ffaa44", size=9),
+        ))
+
+        fig2.update_layout(
+            yaxis=dict(title=dict(text="Doanh số (VND)",
+                       font=dict(color="#8b8fa8", size=11))),
+            yaxis2=dict(
+                title=dict(text="WoW%", font=dict(color="#ffaa44", size=11)),
+                anchor="free", overlaying="y", side="right", position=1.0,
+                tickfont=dict(color="#ffaa44"),
+            ),
+            legend=dict(orientation="h", yanchor="bottom", y=1.06,
+                        xanchor="center", x=0.5),
+            height=300,
+        )
         chart_with_data(
-            fig=fig2, df=weekly, filename="weekly_revenue",
-            title="Doanh số theo tuần (Tuần/Tuần -1 %)", height=280,
+            fig=fig2, df=weekly_disp, filename="weekly_revenue",
+            # title="Doanh số theo tuần (cột) & WoW% (đường) — Tuần cuối = FC dự báo",
+            height=300,
             display_cols={"week": "Tuần",
                           "revenue": "Doanh số (VND)", "wow": "WoW%"},
             format_cols={"revenue": "vnd", "wow": "pct"},
@@ -127,7 +157,6 @@ def render(filters: dict, daily_df):
             display_cols={"area": "Khu vực", "revenue": "Doanh số (VND)"},
             format_cols={"revenue": "vnd"},
         )
-
     with col2:
         zone_sum = area_df.groupby("zone")["revenue"].sum(
         ).reset_index().sort_values("revenue")
