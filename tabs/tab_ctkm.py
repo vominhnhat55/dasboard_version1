@@ -22,28 +22,28 @@ def render(filters: dict):
 
     overview = _load_overview(s, e, a, z, sc)
     by_outlet = _load_by_outlet(s, e, a, z, sc)
-    by_cat    = _load_by_category(s, e, a, z, sc)
-    daily     = _load_daily(s, e, a, z, sc)
+    by_cat = _load_by_category(s, e, a, z, sc)
+    daily = _load_daily(s, e, a, z, sc)
     top_combo = _load_top_combos(s, e, a, z, sc, top_n=10)
     all_combos = _load_all_combos(s, e, a, z, sc)
     summary_combo = _load_summary_combo(s, e, a, z, sc)
 
     # ── Giải thích Combo là gì ─────────────────────────────────────────────────
     section_header("🎁 CTKM — Chương trình Khuyến mãi")
-    st.markdown("""
-    <div style="background:#1e2235;border:1px solid #2a2d3e;border-radius:10px;
-                padding:12px 16px;margin-bottom:14px;">
-        <div style="color:#fff;font-size:13px;font-weight:600;margin-bottom:6px;">
-            📌 Combo SKU là gì?
-        </div>
-        <div style="color:#8b8fa8;font-size:12.5px;line-height:1.6;">
-            Các sản phẩm thuộc chương trình khuyến mãi được nhận diện qua
-            <b style="color:#ff6b6b;">sku_code bắt đầu bằng <code style="background:#2a2d3e;padding:2px 6px;border-radius:4px;">Combo-</code></b>.
-            Nhóm <b style="color:#4c6ef5;">Non-Combo</b> = tất cả SKU còn lại (bán thông thường).
-            Tab này phân tích đóng góp doanh số, tỷ lệ, và xu hướng của CTKM.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # st.markdown("""
+    # <div style="background:#1e2235;border:1px solid #2a2d3e;border-radius:10px;
+    #             padding:12px 16px;margin-bottom:14px;">
+    #     <div style="color:#fff;font-size:13px;font-weight:600;margin-bottom:6px;">
+    #         📌 Combo SKU là gì?
+    #     </div>
+    #     <div style="color:#8b8fa8;font-size:12.5px;line-height:1.6;">
+    #         Các sản phẩm thuộc chương trình khuyến mãi được nhận diện qua
+    #         <b style="color:#ff6b6b;">sku_code bắt đầu bằng <code style="background:#2a2d3e;padding:2px 6px;border-radius:4px;">Combo-</code></b>.
+    #         Nhóm <b style="color:#4c6ef5;">Non-Combo</b> = tất cả SKU còn lại (bán thông thường).
+    #         Tab này phân tích đóng góp doanh số, tỷ lệ, và xu hướng của CTKM.
+    #     </div>
+    # </div>
+    # """, unsafe_allow_html=True)
 
     # ── KPIs tổng quan ─────────────────────────────────────────────────────────
     section_header("📊 Chỉ số tổng quan")
@@ -58,15 +58,20 @@ def render(filters: dict):
     combo_row = overview[overview["is_combo"] == "Combo"]
     ncombo_row = overview[overview["is_combo"] == "Non-Combo"]
 
-    combo_rev    = float(combo_row["revenue"].iloc[0])    if not combo_row.empty else 0
-    ncombo_rev   = float(ncombo_row["revenue"].iloc[0])   if not ncombo_row.empty else 0
-    total_rev    = combo_rev + ncombo_rev
-    combo_pct    = combo_rev / total_rev * 100             if total_rev > 0 else 0
-    combo_qty    = int(combo_row["qty"].iloc[0])          if not combo_row.empty else 0
-    ncombo_qty   = int(ncombo_row["qty"].iloc[0])         if not ncombo_row.empty else 0
-    combo_sku    = int(combo_row["sku_count"].iloc[0])    if not combo_row.empty else 0
-    ncombo_sku   = int(ncombo_row["sku_count"].iloc[0])  if not ncombo_row.empty else 0
-    combo_outlet = int(combo_row["outlet_count"].iloc[0]) if not combo_row.empty else 0
+    combo_rev = float(combo_row["revenue"].iloc[0]
+                      ) if not combo_row.empty else 0
+    ncombo_rev = float(ncombo_row["revenue"].iloc[0]
+                       ) if not ncombo_row.empty else 0
+    total_rev = combo_rev + ncombo_rev
+    combo_pct = combo_rev / total_rev * 100 if total_rev > 0 else 0
+    combo_qty = int(combo_row["qty"].iloc[0]) if not combo_row.empty else 0
+    ncombo_qty = int(ncombo_row["qty"].iloc[0]) if not ncombo_row.empty else 0
+    combo_sku = int(combo_row["sku_count"].iloc[0]
+                    ) if not combo_row.empty else 0
+    ncombo_sku = int(ncombo_row["sku_count"].iloc[0]
+                     ) if not ncombo_row.empty else 0
+    combo_outlet = int(combo_row["outlet_count"].iloc[0]
+                       ) if not combo_row.empty else 0
 
     kpi_combo = combo_rev / (combo_outlet or 1)
 
@@ -152,8 +157,10 @@ def render(filters: dict):
         for col in ["Combo", "Non-Combo"]:
             if col not in piv_daily.columns:
                 piv_daily[col] = 0
-        piv_daily["Combo_MA7"] = piv_daily["Combo"].rolling(7, min_periods=1).mean()
-        piv_daily["NonCombo_MA7"] = piv_daily["Non-Combo"].rolling(7, min_periods=1).mean()
+        piv_daily["Combo_MA7"] = piv_daily["Combo"].rolling(
+            7, min_periods=1).mean()
+        piv_daily["NonCombo_MA7"] = piv_daily["Non-Combo"].rolling(
+            7, min_periods=1).mean()
 
         fig_trend = go.Figure()
         fig_trend.add_bar(
@@ -306,7 +313,8 @@ def render(filters: dict):
             title="Tỷ lệ Combo (%) theo Danh mục", height=280,
             display_cols={"category": "Danh mục", "Combo": "Combo (VND)",
                           "Non-Combo": "Non-Combo (VND)", "Combo%": "Combo (%)"},
-            format_cols={"Combo": "vnd", "Non-Combo": "vnd", "Combo%": "float"},
+            format_cols={"Combo": "vnd",
+                         "Non-Combo": "vnd", "Combo%": "float"},
         )
 
     # ── Top Combo SKU ──────────────────────────────────────────────────────────
@@ -331,7 +339,8 @@ def render(filters: dict):
         )
 
         # Chọn combo để xem chi tiết sản phẩm
-        combo_options = {r["sku_code"]: r["sku_name"] for _, r in all_combos.iterrows()}
+        combo_options = {r["sku_code"]: r["sku_name"]
+                         for _, r in all_combos.iterrows()}
         sel_combo_code = st.selectbox(
             "🔍 Chọn Combo để xem chi tiết:",
             options=list(combo_options.keys()),
@@ -399,7 +408,8 @@ def render(filters: dict):
         # Bảng chi tiết đầy đủ tất cả combo
         st.markdown("<br>", unsafe_allow_html=True)
         tbl_combo = top_combo.copy()
-        tbl_combo["Combo%"] = tbl_combo["revenue"] / tbl_combo["revenue"].sum() * 100
+        tbl_combo["Combo%"] = tbl_combo["revenue"] / \
+            tbl_combo["revenue"].sum() * 100
         tbl_combo = tbl_combo.rename(columns={
             "sku_code": "Mã SKU", "sku_name": "Tên Combo",
             "product_name": "Sản phẩm gốc", "category": "Danh mục",
@@ -435,7 +445,8 @@ def render(filters: dict):
             "revenue": "Doanh số (VND)",
             "qty": "SL",
         })
-        tbl_s["Doanh số (VND)"] = tbl_s["Doanh số (VND)"].apply(lambda x: f"{int(x):,}")
+        tbl_s["Doanh số (VND)"] = tbl_s["Doanh số (VND)"].apply(
+            lambda x: f"{int(x):,}")
         tbl_s["SL"] = tbl_s["SL"].apply(lambda x: f"{int(x):,}")
 
         col_tbl, col_btn = st.columns([5, 1])
