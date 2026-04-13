@@ -37,14 +37,96 @@ def render(filters: dict, daily_df):
     with c6:
         kpi_card("📆 Số tuần",         str(weekly["week"].nunique()))
     st.markdown("<br>", unsafe_allow_html=True)
-    # ── Trend chart ───────────────────────────────────────────────────────────
+    # ── Daily sales chart (actual + 7-day forecast) ─────────────────────────
+    section_header("📊 Doanh số theo ngày (Thực tế + Dự báo 7 ngày)")
+    daily_disp = daily_df[["report_date", "revenue"]].copy()
+    daily_disp = daily_disp.sort_values("report_date")
+    daily_disp.columns = ["date", "revenue"]
+    fc7 = forecast_next_n_days(daily_df, filters["fc_pct"], n_days=7)
+    fc7 = fc7.rename(columns={"date": "date", "forecast": "revenue"})
+    fc7["type"] = "forecast"
+    daily_disp["type"] = "actual"
+    combined = pd.concat([daily_disp, fc7], ignore_index=True)
+    combined = combined.sort_values("date")
+    # WMA label for legend
+    wma_val = compute_wma(daily_df["revenue"].values)
+    dow_idx = compute_dow_index(daily_df)
+    fig_daily = go.Figure()
+    # Actual bars
+    actual_mask = combined["type"] == "actual"
+    fig_daily.add_trace(go.Bar(
+        x=combined.loc[actual_mask, "date"],
+        y=combined.loc[actual_mask, "revenue"],
+        name="Thực tế",
+        marker_color="#4c6ef5",
+        text=combined.loc[actual_mask, "revenue"].apply(fmt_vnd),
+        textposition="outside",
+        textfont=dict(color="#fff", size=8),
+    ))
+    # Forecast bars (dashed border, orange)
+    fc_mask = combined["type"] == "forecast"
+    fig_daily.add_trace(go.Bar(
+        x=combined.loc[fc_mask, "date"],
+        y=combined.loc[fc_mask, "revenue"],
+        name="FC 7 ngày",
+        marker_color="#ffaa44",
+        marker_opacity=0.7,
+        text=combined.loc[fc_mask, "revenue"].apply(fmt_vnd),
+        textposition="outside",
+        textfont=dict(color="#fff", size=8),
+    ))
+    # Trendline through actuals (7-day MA)
+    daily_disp_sorted = daily_disp.sort_values("date")
+    ma7 = daily_disp_sorted["revenue"].rolling(7, min_periods=1).mean()
+    fig_daily.add_trace(go.Scatter(
+        x=daily_disp_sorted["date"],
+        y=ma7,
+        name="MA7",
+        mode="lines",
+        line=dict(color="#00c48c", width=2, dash="dot"),
+    ))
+    fig_daily.update_layout(
+        height=320,
+        legend=dict(orientation="h", yanchor="bottom", y=1.08,
+                    xanchor="center", x=0.5),
+        xaxis=dict(title=dict(font=dict(color="#8b8fa8", size=11))),
+        yaxis=dict(title=dict(text="Doanh số (VND)",
+                   font=dict(color="#8b8fa8", size=11))),
+    )
+    chart_with_data(
+        fig=fig_daily,
+        df=combined,
+        filename="daily_sales_with_forecast",
+        title="Doanh số & Dự báo 7 ngày",
+        height=320,
+        display_cols={"date": "Ngày",
+                      "revenue": "Doanh số (VND)", "type": "Loại"},
+        format_cols={"revenue": "vnd"},
+    )
 
+    # ── 7-day FC breakdown table ─────────────────────────────────────────────
+    dow_labels = {0: "T2", 1: "T3", 2: "T4",
+                  3: "T5", 4: "T6", 5: "T7", 6: "CN"}
+    fc7_detail = forecast_next_n_days(daily_df, filters["fc_pct"], n_days=7)
+    fc7_detail = fc7_detail.copy()
+    fc7_detail["dow_label"] = fc7_detail["date"].dt.dayofweek.map(dow_labels)
+    fc7_detail["DOW_factor"] = fc7_detail["date"].dt.dayofweek.map(
+        lambda d: dow_idx.get(d, 1.0))
+    fc7_detail["Ngày"] = fc7_detail["date"].dt.strftime("%d/%m")
+    fc7_detail["Thứ"] = fc7_detail["dow_label"]
+    fc7_detail["Hệ số DOW"] = fc7_detail["DOW_factor"].round(3)
+    fc7_detail["FC (VND)"] = fc7_detail["forecast"].apply(lambda x: fmt_vnd(x))
+    tbl7 = fc7_detail[["Ngày", "Thứ", "Hệ số DOW", "FC (VND)"]].copy()
+    with st.expander("📋 Chi tiết FC 7 ngày"):
+        st.dataframe(tbl7, width="stretch", hide_index=True,
+                     use_container_width=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    # ── Trend chart ───────────────────────────────────────────────────────────
     # ── WoW & DOW ────────────────────────────────────────────────────────────
     col1, col2 = st.columns(2)
     with col1:
         weekly = weekly.copy()
         weekly["wow"] = weekly["revenue"].pct_change() * 100
-
         # ── Current week forecast (WMA × DOW factors) ────────────────────────
         wma_val = compute_wma(daily_df["revenue"].values)
         dow_idx = compute_dow_index(daily_df)
@@ -69,7 +151,6 @@ def render(filters: dict, daily_df):
 
         # ── Combo chart: bars (revenue) + line (WoW%) ──────────────────────────
         labels = [f"Tuần {w}" for w in weekly_disp["week"]]
-
         # Actual weeks: blue bars
         actual_labels = labels[:-1]
         actual_rev = weekly_disp["revenue"].iloc[:-1].tolist()
@@ -143,7 +224,6 @@ def render(filters: dict, daily_df):
             display_cols={"label": "Thứ", "revenue": "DS TB (VND)"},
             format_cols={"revenue": "vnd"},
         )
-
     # ── Area & Zone ───────────────────────────────────────────────────────────
     col1, col2 = st.columns(2)
     with col1:
@@ -301,51 +381,118 @@ def render(filters: dict, daily_df):
                          "actual_pct": "float", "gap_pct": "float"},
         )
 
-        # ── Alerts ────────────────────────────────────────────────────────────
+        # ── Alerts — table with progress ─────────────────────────────────────────
         st.markdown("---")
         section_header("🚨 Cảnh báo điểm bán vs FC")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("**🔴 Nguy cơ không đạt FC (cần hành động ngay)**")
-            danger = fc_status[fc_status["status"] ==
-                               "danger"].sort_values("gap_pct").head(15)
-            danger = danger.sort_values("zone")
-            if danger.empty:
-                alert_box("✅ Không có điểm bán trong nguy hiểm", "g")
-            for _, r in danger.iterrows():
-                needed = fmt_vnd(
-                    r["needed_pace"]) if r["needed_pace"] > 0 else "N/A"
-                alert_box(
-                    f"🔴 <b>{r['supermarket_name']}</b> ({r['zone']}) — "
-                    f"đạt <b>{r['actual_pct']:.1f}%</b> FC | "
-                    f"lag tiến độ {abs(r['gap_pct']):.1f}% | "
-                    f"cần {needed} VND/ngày", "r"
-                )
-        with col2:
-            st.markdown(
-                "**🟡 Cần theo dõi (có thể không đạt nếu không cải thiện)**")
-            warn = fc_status[fc_status["status"] ==
-                             "warning"].sort_values("gap_pct").head(15)
-            if warn.empty:
-                alert_box("✅ Không có điểm bán cần theo dõi đặc biệt", "g")
-            for _, r in warn.iterrows():
-                needed = fmt_vnd(
-                    r["needed_pace"]) if r["needed_pace"] > 0 else "N/A"
-                alert_box(
-                    f"🟡 <b>{r['supermarket_name']}</b> ({r['zone']}) — "
-                    f"đạt <b>{r['actual_pct']:.1f}%</b> FC | "
-                    f"cần {needed} VND/ngày để hoàn thành", "w"
-                )
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("**✅ Điểm bán đạt / vượt FC**")
-        achieved_df = fc_status[fc_status["status"] == "achieved"].sort_values(
-            "actual_pct", ascending=False).head(10)
-        for _, r in achieved_df.iterrows():
-            alert_box(
-                f"🏆 <b>{r['supermarket_name']}</b> — "
-                f"đạt <b>{r['actual_pct']:.1f}%</b> FC  "
-                f"({fmt_vnd(r['revenue'])} / {fmt_vnd(r['fc_total'])} VND)", "g"
+
+        alert_df = fc_status[fc_status["status"].isin(
+            ["danger", "warning", "achieved", "on_track"]
+        )].copy()
+        alert_df["sort_val"] = alert_df["status"].map(
+            {"danger": 0, "warning": 1, "on_track": 2, "achieved": 3})
+        alert_df = alert_df.sort_values(
+            ["sort_val", "gap_pct"]).reset_index(drop=True)
+
+        status_icon = {
+            "danger":   "🔴",
+            "warning":  "🟡",
+            "on_track": "🟢",
+            "achieved": "✅",
+        }
+        status_label = {
+            "danger":   "Nguy hiểm",
+            "warning":  "Cần TDõi",
+            "on_track": "Đúng tiến độ",
+            "achieved": "Đạt FC",
+        }
+        status_color = {
+            "danger": "#ff5b5b",
+            "warning": "#ffaa44",
+            "on_track": "#4c6ef5",
+            "achieved": "#00c48c",
+        }
+        # ── Filter pills ───────────────────────────────────────────────────────
+        pill_options = [status_label[k] for k in status_label]
+        selected = st.pills(
+            "Lọc trạng thái",
+            options=pill_options,
+            default=pill_options,
+            selection_mode="multi",
+            key="alert_filter",
+        )
+        visible = [k for k in status_label if status_label[k] in selected]
+
+        # ── Search row ─────────────────────────────────────────────────────────
+        search_q = st.text_input(
+            "🔍 Tìm tên SM / Zone",
+            placeholder="Nhập tên điểm bán hoặc zone…",
+            label_visibility="collapsed",
+        )
+
+        # ── Build table ───────────────────────────────────────────────────────
+        tbl = fc_status.copy()
+        tbl = tbl[tbl["status"].isin(visible)].copy()
+        if search_q:
+            q = search_q.lower()
+            tbl = tbl[tbl["supermarket_name"].str.lower().str.contains(q, na=False) |
+                      tbl["zone"].str.lower().str.contains(q, na=False)]
+        tbl["TT"] = tbl["status"].map(status_icon)
+        tbl["Tên SM"] = tbl["supermarket_name"]
+        tbl["KV"] = tbl["area"]
+        tbl["Zone"] = tbl["zone"]
+        tbl["FC (VND)"] = tbl["fc_total"]
+        tbl["Thực tế (VND)"] = tbl["revenue"]
+        tbl["% Đạt"] = tbl["actual_pct"]
+        tbl["% KV tiến độ"] = tbl["expected_pct"]
+        tbl["Gap (%)"] = tbl["gap_pct"]
+        tbl["Tốc độ (%)"] = tbl["pace_ratio"]
+        tbl["Trạng thái"] = tbl["status_label"]
+        tbl["Cần/ngày"] = tbl["needed_pace"]
+        for col in ["FC (VND)", "Thực tế (VND)"]:
+            tbl[col] = tbl[col].apply(
+                lambda x: f"{x:,.0f}" if pd.notna(x) else "")
+        for col in ["% Đạt", "% KV tiến độ", "Gap (%)", "Tốc độ (%)"]:
+            tbl[col] = tbl[col].apply(
+                lambda x: f"{x:.1f}" if pd.notna(x) else "")
+        tbl["Cần/ngày"] = tbl["Cần/ngày"].apply(
+            lambda x: fmt_vnd(x) if x > 0 else "—")
+
+        disp = tbl[["TT", "Tên SM", "KV", "Zone", "FC (VND)", "Thực tế (VND)",
+                    "% Đạt", "% KV tiến độ", "Gap (%)", "Tốc độ (%)",
+                    "Trạng thái", "Cần/ngày"]].copy()
+
+        # download button (after disp is built)
+        download_button(disp, "fc_vs_actual_all", "⬇️ Tải CSV")
+
+        # progress bar HTML (st.dataframe can't render HTML — use HTML table)
+        def progress_bar(pct, status):
+            color = status_color.get(status, "#8b8fa8")
+            pct_txt = f"{pct:.1f}%"
+            text_color = "#fff" if pct <= 70 else "#111"
+            return (
+                f'<div style="background:#1e1e2e;border-radius:4px;height:18px;width:100%;'
+                f'position:relative;display:flex;align-items:center;">'
+                f'<div style="background:{color};width:{min(pct, 100):.1f}%;height:18px;'
+                f'border-radius:4px;display:inline-block;'
+                f'line-height:18px;text-align:center;">'
+                f'<span style="color:{text_color};font-size:11px;font-weight:600;'
+                f'padding-left:4px;white-space:nowrap;">{pct_txt}</span></div></div>'
             )
+
+        tbl["Tiến độ"] = [
+            progress_bar(p, s)
+            for p, s in zip(tbl["actual_pct"].fillna(0), tbl["status"])
+        ]
+
+        disp_pb = tbl[["TT", "Tên SM", "KV", "Zone", "FC (VND)", "Thực tế (VND)",
+                       "% Đạt", "% KV tiến độ", "Gap (%)", "Tốc độ (%)",
+                       "Trạng thái", "Cần/ngày", "Tiến độ"]].copy()
+
+        st.markdown(
+            f'<div style="height:360px;overflow-y:auto;border:1px solid #2d2d4a;'
+            f'border-radius:8px;padding:4px;">'
+            f'{disp_pb.to_html(escape=False, index=False)}</div>',
+            unsafe_allow_html=True)
 
         # ── Scatter: % đạt vs gap ─────────────────────────────────────────────
         st.markdown("<br>", unsafe_allow_html=True)
@@ -387,23 +534,3 @@ def render(filters: dict, daily_df):
             format_cols={"fc_total": "vnd", "revenue": "vnd",
                          "actual_pct": "float", "gap_pct": "float", "pace_ratio": "float"},
         )
-        # ── Full table ────────────────────────────────────────────────────────
-        st.markdown("<br>", unsafe_allow_html=True)
-        section_header("📋 Bảng chi tiết tất cả điểm bán vs FC")
-        tbl = fc_status[["supermarket_name", "area", "zone", "fc_total", "revenue",
-                         "actual_pct", "expected_pct", "gap_pct", "pace_ratio",
-                         "status_label"]].copy()
-        tbl.columns = ["Tên SM", "KV", "Zone", "FC (VND)", "Thực tế (VND)",
-                       "% Đạt", "% KV tiến độ", "Gap (%)", "Tốc độ (%)", "Trạng thái"]
-        for col in ["FC (VND)", "Thực tế (VND)"]:
-            tbl[col] = tbl[col].apply(
-                lambda x: f"{x:,.0f}" if pd.notna(x) else "")
-        for col in ["% Đạt", "% KV tiến độ", "Gap (%)", "Tốc độ (%)"]:
-            tbl[col] = tbl[col].apply(
-                lambda x: f"{x:.1f}" if pd.notna(x) else "")
-        col_tbl, col_btn = st.columns([5, 1])
-        with col_tbl:
-            st.dataframe(tbl, width="stretch", hide_index=True)
-        with col_btn:
-            st.markdown("<br><br>", unsafe_allow_html=True)
-            download_button(tbl, "fc_vs_actual_all", "⬇️ Tải CSV")
